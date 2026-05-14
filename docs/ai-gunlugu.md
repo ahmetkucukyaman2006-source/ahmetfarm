@@ -1,22 +1,42 @@
 # AI Günlüğü
-
+Oturum 1 — 14/05/2026 — 00:30
 ## Hedef
-*(Bu oturumda ulaşılmak istenen amaç nedir?)*
+Proje iskeletini "Application Factory" ve "Blueprint" yapısına uygun şekilde kurmak ve veritabanı modellerini (User, Crop, Inventory, FarmPlot) tasarlamak.
 
 ## Mod/Model
-*(Kullanılan yapay zeka aracı/modeli hangisi?)*
+- Mod: Plan Modu
+- Model: Gemini 3.1 Pro (High)
+- Görünüm: Manager View
 
 ## Promptlar
-*(Yapay zekaya verilen komutlar/istemler nelerdir?)*
+"Application factory pattern kullanan, blueprint yapısına sahip temel proje iskeletini kur. (ahmetfarm)"
 
+"docs/ klasörü ve içinde ai-gunlugu.md şablonu oluştur."
+
+"SQLAlchemy 2.x stili (Mapped ve mapped_column) kullanarak User, Crop, Inventory ve FarmPlot modellerini oluştur."
 ## Plan
-*(Hedefe ulaşmak için izlenecek adımlar/strateji nedir?)*
+Proje klasörlerini mkdir komutlarıyla oluşturma.
 
+requirements.txt dosyasına gerekli Flask kütüphanelerini ekleme.
+
+Modelleri yazmadan önce relationship (ilişki) tanımları ve UTC zaman dilimi standardı için onay isteme.
 ## Sorgulama
-*(Hangi sorular soruldu, nasıl bir düşünce süreci izlendi?)*
+Proje klasörlerini mkdir komutlarıyla oluşturma.
+
+requirements.txt dosyasına gerekli Flask kütüphanelerini ekleme.
+
+Modelleri yazmadan önce relationship (ilişki) tanımları ve UTC zaman dilimi standardı için onay isteme.
 
 ## Hatalar
-*(Karşılaşılan sorunlar, hatalar veya eksiklikler nelerdir?)*
+- **Ajan Kesintisi:** "Our servers are experiencing high traffic" hatası alındı. `Retry` butonu ile aşıldı.
+- **Git Eksikliği:** Sistemde Git yüklü olmadığı için komutlar çalışmadı. `winget` aracılığıyla terminalden kurulum yapıldı.
+- **Kimlik Hatası:** Git commit sırasında isim/eposta hatası alındı. `git config` komutlarıyla kullanıcı tanımlandı.
+- **Yanlış Dosya Yazımı:** Git komutları yanlışlıkla `.gitignore` içine yazıldı, fark edilip terminale taşındı.
 
 ## Öğrenilenler
-*(Bu süreçte elde edilen yeni bilgiler ve deneyimler nelerdir?)*
+- Flask 3.x ve SQLAlchemy 2.x arasındaki yeni sözdizimi (Mapped) farklarını kavradım.
+- AI ile "Vibe Coding" yaparken sadece komut vermenin yetmediğini, AI'nın sorduğu detaylı sorulara (ilişkiler, zaman dilimi) bilinçli cevap vermenin kod kalitesini artırdığını öğrendim.
+- Git'in sadece bir yükleme aracı değil, projenin her aşamasını mühürleyen bir "zaman makinesi" olduğunu deneyimledim.
+
+!Oturum 1 Planı ve Onay Anı](img/oturum1-plan.png)
+

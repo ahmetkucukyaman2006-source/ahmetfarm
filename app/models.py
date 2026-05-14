@@ -24,7 +24,7 @@ class User(UserMixin, db.Model):
     plots: Mapped[List["FarmPlot"]] = relationship("FarmPlot", back_populates="user", cascade="all, delete-orphan")
 
     def set_password(self, password: str) -> None:
-        self.password_hash = generate_password_hash(password)
+        self.password_hash = generate_password_hash(password, method='scrypt')
 
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
@@ -69,3 +69,9 @@ class FarmPlot(db.Model):
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="plots")
     crop: Mapped[Optional["Crop"]] = relationship("Crop", back_populates="farm_plots")
+
+from app.extensions import login_manager
+
+@login_manager.user_loader
+def load_user(user_id):
+    return db.session.get(User, int(user_id))
