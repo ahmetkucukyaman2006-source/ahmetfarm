@@ -1,10 +1,391 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="glass-card dashboard-card">
-    <h1>Hoş Geldin, {{ current_user.username }}!</h1>
-    <p>Çiftliğine geri dönmek harika. Yakında burada ekinlerinizi, envanterinizi ve diğer çiftlik istatistiklerinizi görebileceksiniz.</p>
-    <br>
-    <p><em>(Dashboard modülleri yapım aşamasındadır...)</em></p>
+<!-- Full Screen Leaflet Map Container -->
+<div id="farmMap" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 0; background: #111;"></div>
+
+<!-- Mini Map Panel -->
+<div class="mini-map-panel">
+    <div class="mini-map-indicator"></div>
 </div>
+
+<!-- Map Controls -->
+<div class="map-controls">
+    <button onclick="map.zoomIn()" title="Yakınlaştır">+</button>
+    <button onclick="map.zoomOut()" title="Uzaklaştır">-</button>
+</div>
+
+<!-- Modal for Planting -->
+<div class="modal-overlay" id="plantModal" style="z-index: 1000;">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <h2>Ne ekmek istersin?</h2>
+        <div class="crop-list">
+            {% for crop in crops %}
+            <div class="crop-item {% if current_user.level < crop.unlock_level %}locked{% endif %} {% if crop.unlock_level >= 20 %}legendary-item{% endif %}" {% if current_user.level < crop.unlock_level %}style="opacity: 0.6;"{% endif %}>
+                <div class="crop-info">
+                    <h4>{{ crop.name }} {% if current_user.level < crop.unlock_level %}🔒 (Lvl {{ crop.unlock_level }}){% endif %}</h4>
+                    <p>Büyüme: {{ crop.grow_time }}sn | Maliyet: {{ crop.seed_cost }} 🪙</p>
+                </div>
+                <button class="btn-plant" 
+                        {% if current_user.level < crop.unlock_level %}disabled style="background:gray; cursor:not-allowed;"{% else %}onclick="plantCrop({{ crop.id }})"{% endif %}>
+                    {% if current_user.level < crop.unlock_level %}Kilitli{% else %}Ekelim{% endif %}
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+    const plotsData = [
+        {% for plot in plots %}
+        {
+            id: {{ plot.id }},
+            x: {{ plot.x_coord }},
+            y: {{ plot.y_coord }},
+            w: {{ plot.width }},
+            h: {{ plot.height }},
+            is_owned: {{ 'true' if plot.is_owned else 'false' }},
+            state: '{{ plot.state }}',
+            crop_name: '{{ plot.crop.name if plot.crop else "" }}',
+            grow_time: {{ plot.crop.grow_time if plot.crop else 0 }},
+            time_remaining: {{ plot.time_remaining }},
+            cost: {{ (plots | selectattr('is_owned') | list | length) * 500 * (plot.width * plot.height) }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    let map = L.map('farmMap', {
+        center: [37.722, 27.345], // Adjusted to view the entire asymmetric grid nicely
+        zoom: 16,
+        zoomControl: false,
+        attributionControl: false
+    });
+
+    // Esri World Imagery (Satellite)
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19
+    }).addTo(map);
+
+    // Map Labels
+    L.marker([37.740, 27.350], {
+        icon: L.divIcon({ className: '', html: '<div style="color:white; font-size:2rem; font-weight:bold; text-shadow: 2px 2px 4px black; letter-spacing: 2px;">AYDIN</div>' })
+    }).addTo(map);
+
+    L.marker([37.732, 27.340], {
+        icon: L.divIcon({ className: '', html: '<div style="color:white; font-size:1.5rem; font-weight:bold; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 10px; border: 1px solid gold; display:inline-block; white-space:nowrap; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">🌿 SÖKE</div>' })
+    }).addTo(map);
+
+    let currentPlotId = null;
+    let plotLayers = {};
+
+    // Base coordinates for the grid mapping
+    const BASE_LAT = 37.725;
+    const BASE_LON = 27.340;
+    const LAT_STEP = -0.0015; // Moving down visually
+    const LON_STEP = 0.0020;  // Moving right visually
+
+    function renderPlots() {
+        plotsData.forEach(plot => {
+            // Calculate bounds based on x, y, w, h
+            let northLat = BASE_LAT + (plot.y * LAT_STEP);
+            let southLat = BASE_LAT + ((plot.y + plot.h) * LAT_STEP);
+            let westLon = BASE_LON + (plot.x * LON_STEP);
+            let eastLon = BASE_LON + ((plot.x + plot.w) * LON_STEP);
+            
+            let bounds = [[southLat, westLon], [northLat, eastLon]];
+            
+            let color = '#ffffff';
+            let fillColor = '#000000';
+            let popupContent = '';
+
+            if (!plot.is_owned) {
+                color = 'gold';
+                fillColor = '#8fbc8f';
+                popupContent = `
+                    <div style="text-align:center; color:#333; font-family: 'Inter', sans-serif;">
+                        <h4 style="margin:0; color:#2c3e50;">🔒 Vahşi Doğa</h4>
+                        <p style="margin:5px 0; font-size:0.9rem;">Devasa Arazi (x${plot.w * plot.h} Verim)</p>
+                        <button onclick="buyPlot(${plot.id})" style="background:linear-gradient(135deg, #ffd700, #b8860b); color:#000; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; margin-top:5px;">Satılık: ${plot.cost} 🪙</button>
+                    </div>
+                `;
+            } else if (plot.state === 'empty') {
+                color = '#00ff87';
+                fillColor = '#00ff87';
+                popupContent = `
+                    <div style="text-align:center; color:#333; font-family: 'Inter', sans-serif;">
+                        <h4 style="margin:0; color:#27ae60;">➕ Boş Tarla</h4>
+                        <p style="margin:5px 0; font-size:0.9rem;">x${plot.w * plot.h} Ekim Kapasitesi</p>
+                        <button onclick="openPlantModal(${plot.id})" style="background:#27ae60; color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; margin-top:5px;">Ekim Yap</button>
+                    </div>
+                `;
+            } else if (plot.state === 'planted') {
+                color = '#ffa500';
+                fillColor = '#ffff00';
+                popupContent = `
+                    <div style="text-align:center; color:#333; font-family: 'Inter', sans-serif;">
+                        <h4 style="margin:0; color:#d35400;">🌱 ${plot.crop_name}</h4>
+                        <p style="margin:5px 0; font-weight:bold;" class="timer-display" data-plot-id="${plot.id}">${plot.time_remaining}s kaldı</p>
+                    </div>
+                `;
+            } else if (plot.state === 'ready') {
+                color = '#ffd700';
+                fillColor = '#ffd700';
+                popupContent = `
+                    <div style="text-align:center; color:#333; font-family: 'Inter', sans-serif;">
+                        <h4 style="margin:0; color:#e67e22;">🌾 ${plot.crop_name} Hazır!</h4>
+                        <p style="margin:5px 0; font-size:0.9rem;">Miktar: x${plot.w * plot.h}</p>
+                        <button onclick="harvestCrop(${plot.id})" style="background:#e67e22; color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; margin-top:5px;">Hasat Et</button>
+                    </div>
+                `;
+            }
+
+            let rect = L.rectangle(bounds, {
+                color: color,
+                weight: plot.is_owned ? 3 : 2,
+                dashArray: plot.is_owned ? '' : '5, 5',
+                fillColor: fillColor,
+                fillOpacity: plot.is_owned ? 0.4 : 0.2
+            }).addTo(map);
+
+            rect.bindPopup(popupContent, { closeButton: false, offset: [0, -10] });
+            plotLayers[plot.id] = rect;
+        });
+    }
+
+    renderPlots();
+
+    // On page load: if a 'planted' plot has 0 seconds remaining, immediately treat it as 'ready'
+    // This handles the case where user refreshes after the crop has already grown.
+    plotsData.forEach(plot => {
+        if (plot.state === 'planted' && plot.time_remaining <= 0) {
+            plot.state = 'ready';
+            let rect = plotLayers[plot.id];
+            if (rect) {
+                rect.setStyle({ color: '#ffd700', fillColor: '#ffd700' });
+                let popupContent = `
+                    <div style="text-align:center; color:#333; font-family: 'Inter', sans-serif;">
+                        <h4 style="margin:0; color:#e67e22;">🌾 ${plot.crop_name} Hazır!</h4>
+                        <p style="margin:5px 0; font-size:0.9rem;">Miktar: x${plot.w * plot.h}</p>
+                        <button onclick="harvestCrop(${plot.id})" style="background: linear-gradient(135deg, #e67e22, #d35400); color:white; border:none; padding:10px 20px; border-radius:10px; cursor:pointer; font-weight:bold; font-size:1rem; margin-top:5px; box-shadow: 0 4px 15px rgba(230,126,34,0.4);">🌾 Hasat Et</button>
+                    </div>
+                `;
+                rect.setPopupContent(popupContent);
+            }
+        }
+    });
+
+    // Timer Logic for Map — runs every second
+    function tickTimers() {
+        plotsData.forEach(plot => {
+            if (plot.state === 'planted' && plot.time_remaining > 0) {
+                plot.time_remaining--;
+
+                // Update popup timer text if popup is currently open
+                let timerEl = document.querySelector(`.timer-display[data-plot-id="${plot.id}"]`);
+                if (timerEl) {
+                    timerEl.innerText = `${plot.time_remaining}s kaldı`;
+                }
+
+                // Update progress bar inside popup if present
+                let progressEl = document.getElementById(`progressBar_${plot.id}`);
+                if (progressEl && plot.grow_time > 0) {
+                    let pct = ((plot.grow_time - plot.time_remaining) / plot.grow_time) * 100;
+                    progressEl.style.width = pct + '%';
+                }
+
+                // Crop is ready!
+                if (plot.time_remaining <= 0) {
+                    plot.state = 'ready';
+
+                    let rect = plotLayers[plot.id];
+                    if (rect) {
+                        rect.setStyle({ color: '#ffd700', fillColor: '#ffd700' });
+
+                        let popupContent = `
+                            <div style="text-align:center; font-family: 'Inter', sans-serif;">
+                                <h4 style="margin:0; color:#e67e22;">🌾 ${plot.crop_name} Hazır!</h4>
+                                <p style="margin:5px 0; font-size:0.9rem;">Miktar: x${plot.w * plot.h}</p>
+                                <button onclick="harvestCrop(${plot.id})" style="background: linear-gradient(135deg, #e67e22, #d35400); color:white; border:none; padding:10px 20px; border-radius:10px; cursor:pointer; font-weight:bold; font-size:1rem; margin-top:5px; box-shadow: 0 4px 15px rgba(230,126,34,0.4);">🌾 Hasat Et</button>
+                            </div>
+                        `;
+                        rect.setPopupContent(popupContent);
+
+                        if (rect.isPopupOpen()) {
+                            map.closePopup();
+                            rect.openPopup();
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    setInterval(tickTimers, 1000);
+
+    function openPlantModal(plotId) {
+        map.closePopup();
+        currentPlotId = plotId;
+        document.getElementById('plantModal').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('plantModal').classList.remove('active');
+        currentPlotId = null;
+    }
+
+    // Actions
+    async function buyPlot(plotId) {
+        if (!confirm("Bu devasa araziyi satın almak istiyor musun?")) return;
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const response = await fetch(`/buy_plot/${plotId}`, { method: 'POST', headers: { 'X-CSRFToken': csrfToken } });
+            const data = await response.json();
+            if (data.success) {
+                showToast(data.message, 'success');
+                
+                // Update coins topbar
+                if (data.new_coins !== undefined) {
+                    const navCoins = document.getElementById('navCoins');
+                    if (navCoins) navCoins.innerText = data.new_coins;
+                }
+                
+                let plot = plotsData.find(p => p.id === plotId);
+                if (plot) {
+                    plot.is_owned = true;
+                    plot.state = 'empty';
+                    
+                    let rect = plotLayers[plot.id];
+                    if (rect) {
+                        rect.setStyle({ color: '#00ff87', fillColor: '#00ff87', weight: 3, dashArray: '' });
+                        
+                        let popupContent = `
+                            <div style="text-align:center; color:#333; font-family: 'Inter', sans-serif;">
+                                <h4 style="margin:0; color:#27ae60;">➕ Boş Tarla</h4>
+                                <p style="margin:5px 0; font-size:0.9rem;">x${plot.w * plot.h} Ekim Kapasitesi</p>
+                                <button onclick="openPlantModal(${plot.id})" style="background:#27ae60; color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; margin-top:5px;">Ekim Yap</button>
+                            </div>
+                        `;
+                        rect.setPopupContent(popupContent);
+                        
+                        if (rect.isPopupOpen()) {
+                            map.closePopup();
+                            rect.openPopup();
+                        }
+                    }
+                }
+            } else {
+                showToast(data.error, 'error');
+            }
+        } catch (err) { showToast("Hata oluştu.", 'error'); }
+    }
+
+    async function harvestCrop(plotId) {
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const response = await fetch(`/harvest/${plotId}`, { method: 'POST', headers: { 'X-CSRFToken': csrfToken } });
+            const data = await response.json();
+            if (data.success) {
+                showToast(data.message, 'success');
+                
+                // Update the JS data array
+                let plot = plotsData.find(p => p.id === plotId);
+                if (plot) {
+                    plot.state = 'empty';
+                    plot.crop_name = '';
+                    plot.time_remaining = 0;
+                    
+                    // Dynamically update the Map Polygon UI
+                    let rect = plotLayers[plot.id];
+                    if (rect) {
+                        rect.setStyle({ color: '#00ff87', fillColor: '#00ff87' });
+                        
+                        let popupContent = `
+                            <div style="text-align:center; color:#333; font-family: 'Inter', sans-serif;">
+                                <h4 style="margin:0; color:#27ae60;">➕ Boş Tarla</h4>
+                                <p style="margin:5px 0; font-size:0.9rem;">x${plot.w * plot.h} Ekim Kapasitesi</p>
+                                <button onclick="openPlantModal(${plot.id})" style="background:#27ae60; color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; margin-top:5px;">Ekim Yap</button>
+                            </div>
+                        `;
+                        rect.setPopupContent(popupContent);
+                        
+                        if (rect.isPopupOpen()) {
+                            map.closePopup();
+                            rect.openPopup();
+                        }
+                    }
+                }
+            } else {
+                showToast(data.error, 'error');
+            }
+        } catch (err) { showToast("Hata oluştu.", 'error'); }
+    }
+
+    async function plantCrop(cropId) {
+        if (!currentPlotId) return;
+
+        // Save plotId BEFORE closeModal() resets currentPlotId to null
+        const targetPlotId = currentPlotId;
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const response = await fetch(`/plant/${targetPlotId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ crop_id: cropId })
+            });
+            const data = await response.json();
+            if (data.success) {
+                closeModal(); // currentPlotId → null, but we already have targetPlotId
+
+                showToast(`🌱 ${data.crop_name} başarıyla ekildi!`, 'success');
+
+                // Update coins topbar
+                if (data.new_coins !== undefined) {
+                    const navCoins = document.getElementById('navCoins');
+                    if (navCoins) navCoins.innerText = data.new_coins;
+                }
+
+                // Find the plot using the saved targetPlotId
+                let plot = plotsData.find(p => p.id === targetPlotId);
+                if (plot) {
+                    plot.state = 'planted';
+                    plot.crop_name = data.crop_name;
+                    plot.time_remaining = data.time_remaining;
+                    plot.grow_time = data.grow_time;
+
+                    let rect = plotLayers[plot.id];
+                    if (rect) {
+                        rect.setStyle({ color: '#ffa500', fillColor: '#ffff00' });
+
+                        let popupContent = `
+                            <div style="text-align:center; font-family: 'Inter', sans-serif;">
+                                <h4 style="margin:0; color:#e67e22;">🌱 ${plot.crop_name}</h4>
+                                <p style="margin:8px 0; font-weight:bold;" class="timer-display" data-plot-id="${plot.id}">${plot.time_remaining}s kaldı</p>
+                                <div style="width:100%; height:6px; background:rgba(255,255,255,0.2); border-radius:3px; overflow:hidden;">
+                                    <div id="progressBar_${plot.id}" style="width:0%; height:100%; background: linear-gradient(90deg, #ffa500, #ffd700); transition: width 1s linear;"></div>
+                                </div>
+                            </div>
+                        `;
+                        rect.setPopupContent(popupContent);
+
+                        // If popup is open, reopen to show new content
+                        if (rect.isPopupOpen()) {
+                            map.closePopup();
+                            rect.openPopup();
+                        }
+                        // Immediately fire one tick so countdown starts with zero delay
+                        setTimeout(tickTimers, 0);
+                    }
+                }
+            } else {
+                showToast(data.error, 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast("Ekim sırasında bir hata oluştu.", 'error');
+        }
+    }
+</script>
 {% endblock %}

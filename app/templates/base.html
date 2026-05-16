@@ -3,36 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% if title %}{{ title }} - {% endif %}Ahmet Farm</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 <body>
-    <nav class="navbar">
-        <a href="{{ url_for('main.index') }}" class="navbar-brand">Ahmet<span>Farm</span></a>
-        <div class="nav-links">
-            {% if current_user.is_authenticated %}
-                <span>Hoş geldin, {{ current_user.username }}</span>
-                <a href="{{ url_for('auth.logout') }}" class="btn-nav">Çıkış Yap</a>
-            {% else %}
-                <a href="{{ url_for('auth.login') }}">Giriş Yap</a>
-                <a href="{{ url_for('auth.register') }}" class="btn-nav">Kayıt Ol</a>
-            {% endif %}
+    {% if current_user.is_authenticated %}
+    <!-- Game Topbar -->
+    <header class="game-topbar">
+        <div class="glass-panel topbar-pill">
+            <a href="{{ url_for('main.profile') }}" title="Profilim" style="display:flex; align-items:center; gap:8px; text-decoration:none; color:inherit;">
+                <img id="topbarAvatar"
+                     src="{{ url_for('static', filename='uploads/avatars/' + current_user.avatar_file) }}"
+                     style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:2px solid var(--accent); transition: transform 0.2s, box-shadow 0.2s;"
+                     onmouseover="this.style.transform='scale(1.15)'; this.style.boxShadow='0 0 12px rgba(0,255,135,0.6)';"
+                     onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+                {{ current_user.username }}
+            </a>
         </div>
-    </nav>
+        <div class="glass-panel topbar-pill" title="XP: {{ current_user.xp }} / {{ current_user.level * 100 }}">
+            <span style="color: gold;">⭐ Level {{ current_user.level }}</span>
+            <div style="width: 100px; height: 5px; background: rgba(255,255,255,0.2); border-radius: 5px; margin-left: 10px; overflow: hidden;">
+                <div style="width: {{ (current_user.xp / (current_user.level * 100)) * 100 }}%; height: 100%; background: gold;"></div>
+            </div>
+        </div>
+        <div class="glass-panel topbar-pill" style="margin-left: auto;">
+            🪙 <span id="navCoins">{{ current_user.coins }}</span>
+        </div>
+        <!-- Dil Değiştirici -->
+        <div class="glass-panel topbar-pill lang-pill">
+            <a href="{{ url_for('main.set_lang', lang='tr') }}"
+               class="lang-flag {% if session.get('lang', 'tr') == 'tr' %}lang-flag--active{% endif %}"
+               title="Türkçe">🇹🇷</a>
+            <span style="color: rgba(255,255,255,0.3); font-size:0.8rem;">|</span>
+            <a href="{{ url_for('main.set_lang', lang='en') }}"
+               class="lang-flag {% if session.get('lang') == 'en' %}lang-flag--active{% endif %}"
+               title="English">🇬🇧</a>
+        </div>
+    </header>
 
-    <div class="container">
+    <!-- Game Sidebar -->
+    <aside class="game-sidebar glass-panel">
+        <div class="sidebar-header">
+            <span>🌿</span> AhmetFarm
+        </div>
+        <nav class="sidebar-menu">
+            <a href="{{ url_for('main.index') }}" class="{% if request.endpoint == 'main.index' %}active{% endif %}">
+                🗺️ {{ _('Harita') }}
+            </a>
+            <a href="{{ url_for('main.factory') }}" class="{% if request.endpoint == 'main.factory' %}active{% endif %}">
+                🏭 {{ _('Tesisler') }}
+            </a>
+            <a href="{{ url_for('main.market') }}" class="{% if request.endpoint == 'main.market' %}active{% endif %}">
+                🏪 {{ _('Pazar') }}
+            </a>
+            <a href="{{ url_for('main.profile') }}" class="{% if request.endpoint == 'main.profile' %}active{% endif %}">
+                👤 {{ _('Profil') }}
+            </a>
+            <a href="{{ url_for('auth.logout') }}" class="btn-logout">
+                🚪 {{ _('Çıkış Yap') }}
+            </a>
+        </nav>
+
+        <!-- Dil Seçici -->
+        <div class="lang-switcher">
+            <a href="{{ url_for('main.set_lang', lang='tr') }}"
+               class="lang-btn {% if session.get('lang', 'tr') == 'tr' %}active{% endif %}">
+                🇹🇷 TR
+            </a>
+            <a href="{{ url_for('main.set_lang', lang='en') }}"
+               class="lang-btn {% if session.get('lang') == 'en' %}active{% endif %}">
+                🇬🇧 EN
+            </a>
+        </div>
+    </aside>
+    {% endif %}
+
+    <!-- Main Content Area -->
+    <main class="main-content" style="{% if not current_user.is_authenticated %}left: 0; display: flex; align-items: center; justify-content: center; background: var(--bg-gradient);{% endif %} {% if request.endpoint == 'main.index' %}padding:0; overflow:hidden;{% endif %}">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <ul class="flashes">
-            {% for category, message in messages %}
-                <li class="flash {{ category }}">{{ message }}</li>
-            {% endfor %}
-            </ul>
+            <div style="position: absolute; top: 80px; left: 50%; transform: translateX(-50%); z-index: 2000; width: 100%; max-width: 450px;">
+                <ul class="flashes">
+                {% for category, message in messages %}
+                    <li class="flash {{ category }}">{{ message }}</li>
+                {% endfor %}
+                </ul>
+            </div>
         {% endif %}
         {% endwith %}
 
         {% block content %}{% endblock %}
-    </div>
+    </main>
+
+    <!-- Premium Toast Notifications Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script>
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            // Check if level up message
+            if (message.includes('TEBRİKLER')) {
+                type = 'levelup';
+                message = '🎉 ' + message;
+            } else if (type === 'success') {
+                message = '✅ ' + message;
+            } else if (type === 'error') {
+                message = '❌ ' + message;
+            }
+            
+            toast.className = `toast-msg ${type}`;
+            toast.innerText = message;
+            
+            container.appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Remove after 4 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 400); // wait for animation
+            }, 4000);
+        }
+    </script>
 </body>
 </html>

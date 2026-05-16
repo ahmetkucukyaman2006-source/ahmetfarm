@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="profile-wrapper">
+
+    <!-- Profil Kartı -->
+    <div class="profile-card glass-panel">
+
+        <!-- Avatar Bölümü -->
+        <div class="avatar-section">
+            <div class="avatar-ring">
+                <img id="avatarPreview"
+                     src="{{ url_for('static', filename='uploads/avatars/' + current_user.avatar_file) }}"
+                     alt="Avatar" class="avatar-img">
+                <!-- Kamera ikonu: tıklandığında gizli file input'u tetikler -->
+                <label for="avatarInput" class="avatar-edit-btn" title="Fotoğraf değiştir">
+                    📷
+                </label>
+            </div>
+            <!-- Gizli dosya seçici — yalnızca resim formatlarını kabul eder -->
+            <input type="file" id="avatarInput" accept="image/png, image/jpeg, image/gif, image/webp" style="display:none;">
+        </div>
+
+        <!-- Kullanıcı Bilgileri -->
+        <div class="profile-info">
+            <h1 class="profile-username">{{ current_user.username }}</h1>
+            <span class="profile-badge">🌾 Çiftçi</span>
+        </div>
+
+        <!-- İstatistik Kutuları -->
+        <div class="profile-stats">
+            <div class="stat-box glass-panel">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-value">{{ current_user.level }}</div>
+                <div class="stat-label">Seviye</div>
+            </div>
+            <div class="stat-box glass-panel">
+                <div class="stat-icon">🪙</div>
+                <div class="stat-value">{{ current_user.coins }}</div>
+                <div class="stat-label">Altın</div>
+            </div>
+            <div class="stat-box glass-panel">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value">{{ current_user.xp }} / {{ current_user.level * 100 }}</div>
+                <div class="stat-label">XP</div>
+            </div>
+            <div class="stat-box glass-panel">
+                <div class="stat-icon">🌱</div>
+                <div class="stat-value">{{ plot_count }}</div>
+                <div class="stat-label">Tarla</div>
+            </div>
+        </div>
+
+        <!-- XP İlerleme Çubuğu -->
+        <div class="xp-bar-wrapper">
+            <div class="xp-bar-label">
+                <span>Seviye {{ current_user.level }}</span>
+                <span>{{ current_user.xp }} / {{ current_user.level * 100 }} XP</span>
+            </div>
+            <div class="xp-bar-track">
+                <div class="xp-bar-fill" style="width: {{ [(current_user.xp / (current_user.level * 100)) * 100, 100] | min }}%;"></div>
+            </div>
+        </div>
+
+        <!-- Avatar Yükleme Formu (AJAX ile gönderilir) -->
+        <form id="avatarForm" enctype="multipart/form-data" style="display:none;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+
+        <!-- Kaydet Butonu (dosya seçilince görünür) -->
+        <button id="saveAvatarBtn" class="btn-save-avatar" onclick="uploadAvatar()" style="display:none;">
+            💾 Avatarı Kaydet
+        </button>
+
+        <!-- Bilgi Bölümü -->
+        <div class="profile-meta glass-panel">
+            <div class="meta-item">
+                <span class="meta-icon">📧</span>
+                <span>{{ current_user.email }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-icon">🗺️</span>
+                <span>Söke Ovası, Aydın</span>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+/* ===== PROFIL SAYFASI ===== */
+.profile-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 2rem;
+    min-height: 100vh;
+}
+
+.profile-card {
+    width: 100%;
+    max-width: 600px;
+    border-radius: 24px;
+    padding: 2.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Avatar */
+.avatar-section { position: relative; }
+
+.avatar-ring {
+    position: relative;
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    padding: 4px;
+    background: linear-gradient(135deg, #00ff87, #60efff, #ffd700);
+    box-shadow: 0 0 30px rgba(0, 255, 135, 0.4);
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #0f1419;
+    transition: filter 0.3s;
+}
+
+.avatar-ring:hover .avatar-img { filter: brightness(0.7); }
+
+.avatar-edit-btn {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 36px;
+    height: 36px;
+    background: rgba(15, 20, 25, 0.9);
+    border: 2px solid rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    line-height: 1;
+}
+
+.avatar-edit-btn:hover {
+    background: var(--accent);
+    transform: scale(1.1);
+}
+
+/* Kullanıcı Adı */
+.profile-info { text-align: center; }
+
+.profile-username {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #fff, #aaa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+}
+
+.profile-badge {
+    background: rgba(0, 255, 135, 0.15);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-block;
+    margin-top: 6px;
+}
+
+/* İstatistik Kutuları */
+.profile-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    width: 100%;
+}
+
+.stat-box {
+    border-radius: 16px;
+    padding: 1rem 0.5rem;
+    text-align: center;
+    transition: transform 0.3s;
+}
+
+.stat-box:hover { transform: translateY(-4px); }
+
+.stat-icon { font-size: 1.5rem; }
+
+.stat-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 4px 0 2px;
+    word-break: break-all;
+}
+
+.stat-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* XP Çubuğu */
+.xp-bar-wrapper { width: 100%; }
+
+.xp-bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.xp-bar-track {
+    width: 100%;
+    height: 10px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.xp-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00ff87, #ffd700);
+    border-radius: 10px;
+    transition: width 1s ease;
+    box-shadow: 0 0 10px rgba(0, 255, 135, 0.5);
+}
+
+/* Kaydet Butonu */
+.btn-save-avatar {
+    padding: 0.8rem 2rem;
+    background: linear-gradient(135deg, #00ff87, #00c96b);
+    color: #000;
+    border: none;
+    border-radius: 30px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 5px 20px rgba(0, 255, 135, 0.4);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 5px 20px rgba(0, 255, 135, 0.4); }
+    50%       { box-shadow: 0 5px 30px rgba(0, 255, 135, 0.7); }
+}
+
+.btn-save-avatar:hover { transform: translateY(-3px) scale(1.03); }
+
+/* Meta Bilgi */
+.profile-meta {
+    width: 100%;
+    border-radius: 16px;
+    padding: 1rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.meta-icon { font-size: 1.1rem; }
+</style>
+
+<script>
+    // Dosya seçildiğinde önizleme göster ve kaydet butonunu ortaya çıkar
+    document.getElementById('avatarInput').addEventListener('change', function() {
+        const file = this.files[0];
+        if (!file) return;
+
+        // Anlık önizleme (sunucuya gönderilmeden önce)
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById('avatarPreview').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+
+        // Kaydet butonunu görünür yap
+        document.getElementById('saveAvatarBtn').style.display = 'inline-block';
+    });
+
+    // AJAX ile avatar yükleme
+    async function uploadAvatar() {
+        const input = document.getElementById('avatarInput');
+        if (!input.files[0]) return;
+
+        const formData = new FormData();
+        formData.append('avatar', input.files[0]);
+        formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+
+        try {
+            const response = await fetch('/api/v1/avatar', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showToast('✅ Avatar başarıyla güncellendi!', 'success');
+                document.getElementById('saveAvatarBtn').style.display = 'none';
+                // Üst bardaki avatarı da güncelle
+                const topbarAvatar = document.getElementById('topbarAvatar');
+                if (topbarAvatar) topbarAvatar.src = data.new_avatar_url;
+            } else {
+                showToast(data.error, 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Avatar yüklenirken bir hata oluştu.', 'error');
+        }
+    }
+</script>
+{% endblock %}

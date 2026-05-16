@@ -1,0 +1,30 @@
+# AhmetFarm - English Translations
+# Copyright (C) 2026 AhmetFarm
+msgid ""
+msgstr ""
+"Project-Id-Version: AhmetFarm 1.0\n"
+"POT-Creation-Date: 2026-05-16 13:06+0300\n"
+"PO-Revision-Date: 2026-05-16 13:06+0300\n"
+"Language: en\n"
+"Language-Team: English\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+# Sidebar menu
+msgid "Harita"
+msgstr "Map"
+
+msgid "Tesisler"
+msgstr "Factories"
+
+msgid "Pazar"
+msgstr "Market"
+
+msgid "Profil"
+msgstr "Profile"
+
+msgid "Çıkış Yap"
+msgstr "Logout"

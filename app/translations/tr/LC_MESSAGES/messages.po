@@ -1,0 +1,30 @@
+# AhmetFarm - Türkçe Çeviriler
+# Copyright (C) 2026 AhmetFarm
+msgid ""
+msgstr ""
+"Project-Id-Version: AhmetFarm 1.0\n"
+"POT-Creation-Date: 2026-05-16 13:06+0300\n"
+"PO-Revision-Date: 2026-05-16 13:06+0300\n"
+"Language: tr\n"
+"Language-Team: Türkçe\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+# Sidebar menü
+msgid "Harita"
+msgstr "Harita"
+
+msgid "Tesisler"
+msgstr "Tesisler"
+
+msgid "Pazar"
+msgstr "Pazar"
+
+msgid "Profil"
+msgstr "Profil"
+
+msgid "Çıkış Yap"
+msgstr "Çıkış Yap"

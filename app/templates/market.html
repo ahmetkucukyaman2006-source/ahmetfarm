@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-card market-card">
+    <h1>Pazar & Depo</h1>
+    <p class="dashboard-desc">Tarladan hasat ettiğin taze ürünleri burada satabilir ve para kazanabilirsin.</p>
+
+    {% if inventory|length == 0 %}
+        <div class="empty-inventory">
+            <div class="plot-icon">🕸️</div>
+            <h3>Depon bomboş!</h3>
+            <p>Satacak bir şeyin yok. Hemen tarlana gidip tohum ekmeye başla.</p>
+            <a href="{{ url_for('main.index') }}" class="btn-primary" style="display:inline-block; max-width:200px;">Tarlaya Dön</a>
+        </div>
+    {% else %}
+        <div class="inventory-grid">
+            {% for item in inventory %}
+                <div class="inventory-item" data-inventory-id="{{ item.id }}">
+                    <div class="item-icon">
+                        {% if item.crop.name == 'Domates' %}🍅{% else %}🌾{% endif %}
+                    </div>
+                    <div class="item-details">
+                        <h3>{{ item.crop.name }}</h3>
+                        <p class="item-quantity">Miktar: <span class="qty-val">{{ item.quantity }}</span></p>
+                    </div>
+                    <button class="btn-sell" onclick="sellItem({{ item.id }})">
+                        Sat (+{{ item.crop.harvest_value }} 🪙)
+                    </button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    async function sellItem(inventoryId) {
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const response = await fetch(`/sell/${inventoryId}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                }
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                // Update coins
+                const navCoins = document.getElementById('navCoins');
+                if (navCoins) navCoins.innerText = `🪙 ${data.new_coins}`;
+                
+                // Animate and update item card
+                const card = document.querySelector(`.inventory-item[data-inventory-id="${inventoryId}"]`);
+                if (card) {
+                    if (data.new_quantity > 0) {
+                        card.querySelector('.qty-val').innerText = data.new_quantity;
+                    } else {
+                        // Fade out and remove
+                        card.style.opacity = '0';
+                        setTimeout(() => card.remove(), 300);
+                    }
+                }
+            } else {
+                alert(data.error);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Satış işlemi sırasında bir hata oluştu.");
+        }
+    }
+</script>
+{% endblock %}

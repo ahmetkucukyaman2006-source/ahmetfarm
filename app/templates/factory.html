@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-card">
+    <h1>Üretim Tesisleri</h1>
+    <p class="dashboard-desc">Tarladan elde ettiğin ham maddeleri burada işleyerek daha değerli ürünlere dönüştür.</p>
+
+    <div class="plots-grid machines-grid">
+        {% for machine in machines if machine.machine_type == 'basic' %}
+        <div class="plot-card machine-card {{ machine.state }}" data-machine-id="{{ machine.id }}"
+            data-state="{{ machine.state }}" data-machine-type="basic"
+            data-time-remaining="{{ machine.time_remaining }}"
+            data-craft-time="{{ machine.recipe.craft_time if machine.recipe else 0 }}">
+
+            {% if machine.state == 'idle' %}
+            <div class="plot-icon">⚙️</div>
+            <div class="plot-status">Makine Boş</div>
+            <div class="plot-timer">Üretim için tıkla</div>
+            {% elif machine.state == 'crafting' %}
+            <div class="plot-icon">🏭</div>
+            <div class="plot-status">{{ machine.recipe.name }}</div>
+            <div class="plot-timer timer-display">{{ machine.time_remaining }}s kaldı</div>
+            <div class="progress-bar">
+                <div class="progress-fill"
+                    style="width: {{ ((machine.recipe.craft_time - machine.time_remaining) / machine.recipe.craft_time * 100)|int }}%">
+                </div>
+            </div>
+            {% elif machine.state == 'ready' %}
+            <div class="plot-icon">📦</div>
+            <div class="plot-status">{{ machine.recipe.result_item.name }} Hazır!</div>
+            <div class="plot-timer">Toplamak için tıkla</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <h2 style="margin-top: 2rem; margin-bottom: 1rem; color: gold; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);">
+        Kraliyet Tesisleri 🏰</h2>
+    <div class="plots-grid machines-grid royal-grid">
+        {% if has_royal %}
+        {% for machine in machines if machine.machine_type == 'royal' %}
+        <div class="plot-card machine-card {{ machine.state }} legendary-item" data-machine-id="{{ machine.id }}"
+            data-state="{{ machine.state }}" data-machine-type="royal"
+            data-time-remaining="{{ machine.time_remaining }}"
+            data-craft-time="{{ machine.recipe.craft_time if machine.recipe else 0 }}">
+
+            {% if machine.state == 'idle' %}
+            <div class="plot-icon">🏰</div>
+            <div class="plot-status">Kraliyet Atölyesi</div>
+            <div class="plot-timer">Üretim için tıkla</div>
+            {% elif machine.state == 'crafting' %}
+            <div class="plot-icon">🔥</div>
+            <div class="plot-status">{{ machine.recipe.name }}</div>
+            <div class="plot-timer timer-display">{{ machine.time_remaining }}s kaldı</div>
+            <div class="progress-bar">
+                <div class="progress-fill"
+                    style="background: gold; width: {{ ((machine.recipe.craft_time - machine.time_remaining) / machine.recipe.craft_time * 100)|int }}%">
+                </div>
+            </div>
+            {% elif machine.state == 'ready' %}
+            <div class="plot-icon">🎁</div>
+            <div class="plot-status">{{ machine.recipe.result_item.name }} Hazır!</div>
+            <div class="plot-timer">Toplamak için tıkla</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% else %}
+        <!-- İnşa Edilmemiş Tesis -->
+        <div class="plot-card locked" style="opacity: 0.8; border-color: rgba(255, 215, 0, 0.2);">
+            <div class="plot-icon" style="filter: grayscale(1);">🏰</div>
+            <div class="plot-status">Kraliyet Çikolata Atölyesi</div>
+            <div class="plot-timer">Efsanevi Eşyalar Üretir</div>
+            <button class="btn-plant" onclick="buildRoyalFactory()"
+                style="margin-top: 15px; width: 100%; {% if current_user.level < 25 %}background:gray; cursor:not-allowed;{% else %}background: linear-gradient(135deg, #ffd700, #b8860b); color: #000;{% endif %}"
+                {% if current_user.level < 25 %}disabled{% endif %}>
+                {% if current_user.level < 25 %}🔒 Lvl 25 Gerekli{% else %}İnşa Et (10.000 🪙){% endif %} </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal for Crafting -->
+<div class="modal-overlay" id="craftModal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeCraftModal()">&times;</span>
+        <h2>Ne üretmek istersin?</h2>
+        <div class="crop-list">
+            {% for recipe in recipes %}
+            <div class="crop-item recipe-item {% if current_user.level < recipe.unlock_level %}locked{% endif %}"
+                data-req-machine="{{ recipe.required_machine_type }}" {% if current_user.level < recipe.unlock_level
+                %}style="opacity: 0.6;" {% endif %}>
+                <div class="crop-info">
+                    <h4>{{ recipe.name }} {% if current_user.level < recipe.unlock_level %}🔒 (Lvl {{
+                            recipe.unlock_level }}){% endif %}</h4>
+                            <p>Gereken: {{ recipe.req_amount }}x {{ recipe.ingredient_item.name }} | Süre: {{
+                                recipe.craft_time }}sn</p>
+                </div>
+                <button class="btn-plant" {% if current_user.level < recipe.unlock_level %}disabled
+                    style="background:gray; cursor:not-allowed;" {% else %}onclick="startCrafting({{ recipe.id }})" {%
+                    endif %}>
+                    {% if current_user.level < recipe.unlock_level %}Kilitli{% else %}Üret{% endif %} </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentMachineId = null;
+
+    // Event Delegation for Machine Clicks
+    document.querySelectorAll('.machines-grid').forEach(grid => {
+        grid.addEventListener('click', function (e) {
+            const card = e.target.closest('.machine-card');
+            if (!card) return;
+
+            currentMachineId = card.dataset.machineId;
+            const state = card.dataset.state;
+            const mType = card.dataset.machineType;
+
+            if (state === 'idle') {
+                // Sadece bu makineye uygun tarifleri göster
+                document.querySelectorAll('.recipe-item').forEach(item => {
+                    if (item.dataset.reqMachine === mType) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                document.getElementById('craftModal').classList.add('active');
+            } else if (state === 'ready') {
+                collectCraft(currentMachineId, card);
+            }
+        });
+    });
+
+    function closeCraftModal() {
+        document.getElementById('craftModal').classList.remove('active');
+        currentMachineId = null;
+    }
+
+    // Start Crafting (AJAX)
+    async function startCrafting(recipeId) {
+        if (!currentMachineId) return;
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const response = await fetch(`/craft/${currentMachineId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ recipe_id: recipeId })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                const machineIdToUpdate = currentMachineId;
+                closeCraftModal();
+
+                const card = document.querySelector(`.machine-card[data-machine-id="${machineIdToUpdate}"]`);
+                card.className = `plot-card machine-card ${data.state}`;
+                card.dataset.state = data.state;
+                card.dataset.timeRemaining = data.time_remaining;
+                card.dataset.craftTime = data.craft_time;
+
+                let fillPercent = ((data.craft_time - data.time_remaining) / data.craft_time) * 100;
+
+                card.innerHTML = `
+                    <div class="plot-icon">🏭</div>
+                    <div class="plot-status">${data.recipe_name}</div>
+                    <div class="plot-timer timer-display">${data.time_remaining}s kaldı</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${fillPercent}%"></div>
+                    </div>
+                `;
+            } else {
+                showToast(data.error, 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast("Üretime başlarken bir hata oluştu.", 'error');
+        }
+    }
+
+    // Collect Craft (AJAX)
+    async function collectCraft(machineId, cardElement) {
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const response = await fetch(`/collect/${machineId}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                }
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showToast(data.message, 'success');
+
+                if (data.new_level !== undefined) {
+                    const navLvl = document.getElementById('navLevel');
+                    if (navLvl) {
+                        navLvl.innerText = `⭐ Lvl ${data.new_level}`;
+                        navLvl.title = `XP: ${data.new_xp} / ${data.required_xp}`;
+                    }
+                }
+
+                cardElement.className = 'plot-card machine-card idle';
+                cardElement.dataset.state = 'idle';
+                cardElement.dataset.timeRemaining = 0;
+                cardElement.innerHTML = `
+                    <div class="plot-icon">⚙️</div>
+                    <div class="plot-status">Makine Boş</div>
+                    <div class="plot-timer">Üretim için tıkla</div>
+                `;
+            } else {
+                showToast(data.error, 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast("Ürünü toplarken bir hata oluştu.", 'error');
+        }
+    }
+
+    // Build Royal Factory (AJAX)
+    async function buildRoyalFactory() {
+        if (!confirm("Kraliyet Çikolata Atölyesi inşa etmek için 10.000 Altın harcanacak. Onaylıyor musun?")) return;
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const response = await fetch('/build_factory', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken }
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showToast(data.message, 'levelup');
+
+                // Update coins dynamically
+                const navCoins = document.getElementById('navCoins');
+                if (navCoins) navCoins.innerText = data.new_coins;
+
+                // Dynamically remove the "build" placeholder and inject the new machine card
+                const royalGrid = document.querySelector('.royal-grid');
+                if (royalGrid) {
+                    royalGrid.innerHTML = `
+                        <div class="plot-card machine-card legendary-item idle"
+                             data-machine-id="${data.machine_id}"
+                             data-state="idle"
+                             data-machine-type="royal"
+                             data-time-remaining="0"
+                             data-craft-time="0">
+                            <div class="plot-icon">🏰</div>
+                            <div class="plot-status">Kraliyet Atölyesi</div>
+                            <div class="plot-timer">Üretim için tıkla</div>
+                        </div>
+                    `;
+
+                    // Re-attach click listener to the new card
+                    royalGrid.querySelectorAll('.machine-card').forEach(card => {
+                        card.addEventListener('click', function () {
+                            currentMachineId = this.dataset.machineId;
+                            const state = this.dataset.state;
+                            if (state === 'idle') {
+                                document.querySelectorAll('.recipe-item').forEach(item => {
+                                    item.style.display = item.dataset.reqMachine === 'royal' ? 'flex' : 'none';
+                                });
+                                document.getElementById('craftModal').classList.add('active');
+                            } else if (state === 'ready') {
+                                collectCraft(currentMachineId, this);
+                            }
+                        });
+                    });
+                }
+            } else {
+                showToast(data.error, 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast("İnşaat sırasında bir hata oluştu.", 'error');
+        }
+    }
+
+    // Machine Timer Logic
+    setInterval(() => {
+        document.querySelectorAll('.machine-card.crafting').forEach(card => {
+            let timeRemaining = parseInt(card.dataset.timeRemaining);
+            let craftTime = parseInt(card.dataset.craftTime) || 1;
+
+            if (timeRemaining > 0) {
+                timeRemaining--;
+                card.dataset.timeRemaining = timeRemaining;
+                const timerEl = card.querySelector('.timer-display');
+                if (timerEl) timerEl.innerText = `${timeRemaining}s kaldı`;
+
+                let fillPercent = ((craftTime - timeRemaining) / craftTime) * 100;
+                let fillElement = card.querySelector('.progress-fill');
+                if (fillElement) fillElement.style.width = fillPercent + '%';
+
+            } else if (timeRemaining === 0) {
+                // Transition to "ready" state without reload
+                const recipeName = card.querySelector('.plot-status')?.innerText ?? 'Ürün';
+                card.className = 'plot-card machine-card ready';
+                card.dataset.state = 'ready';
+                card.dataset.timeRemaining = -1;
+                card.innerHTML = `
+                    <div class="plot-icon">📦</div>
+                    <div class="plot-status">${recipeName} Hazır!</div>
+                    <div class="plot-timer">Toplamak için tıkla</div>
+                `;
+            }
+        });
+    }, 1000);
+
+</script>
+{% endblock %}
