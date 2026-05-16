@@ -5,3 +5,4 @@ venv/
 *.db
 instance/
 app.db
+*.pyc
