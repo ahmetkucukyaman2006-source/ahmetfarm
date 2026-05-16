@@ -34,3 +34,22 @@ class RegistrationForm(FlaskForm):
         user = db.session.scalar(db.select(User).where(User.email == email.data))
         if user is not None:
             raise ValidationError('Bu e-posta adresi ile kayıtlı bir hesap zaten var.')
+
+class ResetPasswordRequestForm(FlaskForm):
+    email_or_username = StringField('E-posta veya Kullanıcı Adı', validators=[DataRequired()])
+    submit = SubmitField('Şifre Sıfırlama Bağlantısı Gönder')
+
+class ResetPasswordForm(FlaskForm):
+    password = PasswordField('Yeni Şifre', validators=[
+        DataRequired(),
+        Length(min=8, message="Şifre en az 8 karakter uzunluğunda olmalıdır."),
+        Regexp(r'(?=.*[a-z])', message="Şifre en az bir küçük harf içermelidir."),
+        Regexp(r'(?=.*[A-Z])', message="Şifre en az bir büyük harf içermelidir."),
+        Regexp(r'(?=.*\d)', message="Şifre en az bir rakam içermelidir."),
+        Regexp(r'(?=.*[@$!%*?&._-])', message="Şifre en az bir özel karakter (@$!%*?&._-) içermelidir.")
+    ])
+    confirm_password = PasswordField('Yeni Şifreyi Onayla', validators=[
+        DataRequired(),
+        EqualTo('password', message="Şifreler eşleşmiyor.")
+    ])
+    submit = SubmitField('Şifreyi Güncelle')

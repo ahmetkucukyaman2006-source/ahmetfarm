@@ -22,6 +22,7 @@
         {{ form.submit(class_="btn-primary") }}
     </form>
     <div class="auth-links">
+        <a href="{{ url_for('auth.reset_request') }}">Şifremi Unuttum</a><br>
         Hesabınız yok mu? <a href="{{ url_for('auth.register') }}">Hemen Kayıt Olun</a>
     </div>
 </div>
