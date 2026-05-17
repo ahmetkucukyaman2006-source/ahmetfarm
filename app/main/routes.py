@@ -78,10 +78,30 @@ def index():
     # --- VERİTABANI BAŞLANGIÇ VERİSİ (Seed Data) ---
     # Uygulama ilk çalıştığında ürün tablosu boşsa temel ürünler eklenir.
     if Crop.query.count() == 0:
-        c1 = Crop(name='Domates', grow_time=60, seed_cost=10, harvest_value=25, unlock_level=2)
-        c2 = Crop(name='Buğday', grow_time=120, seed_cost=5, harvest_value=15, unlock_level=1)
-        c3 = Crop(name='Çilek', grow_time=180, seed_cost=25, harvest_value=70, unlock_level=5)
-        c4 = Crop(name='Altın Kakao', grow_time=600, seed_cost=5000, harvest_value=15000, unlock_level=20)
+        c1 = Crop(
+            name='Domates',
+            grow_time=60,
+            seed_cost=10,
+            harvest_value=25,
+            unlock_level=2)
+        c2 = Crop(
+            name='Buğday',
+            grow_time=120,
+            seed_cost=5,
+            harvest_value=15,
+            unlock_level=1)
+        c3 = Crop(
+            name='Çilek',
+            grow_time=180,
+            seed_cost=25,
+            harvest_value=70,
+            unlock_level=5)
+        c4 = Crop(
+            name='Altın Kakao',
+            grow_time=600,
+            seed_cost=5000,
+            harvest_value=15000,
+            unlock_level=20)
         db.session.add_all([c1, c2, c3, c4])
         db.session.commit()
 
@@ -90,20 +110,69 @@ def index():
         bugday = Crop.query.filter_by(name='Buğday').first()
         domates = Crop.query.filter_by(name='Domates').first()
         cilek = Crop.query.filter_by(name='Çilek').first()
-        # İşlenmiş ürünler (seed_cost=0 → tarlaya ekilemez, yalnızca fabrika çıktısı)
-        un = Crop(name='Un', grow_time=0, seed_cost=0, harvest_value=50, unlock_level=1)
-        salca = Crop(name='Salça', grow_time=0, seed_cost=0, harvest_value=90, unlock_level=2)
-        recel = Crop(name='Çilek Reçeli', grow_time=0, seed_cost=0, harvest_value=180, unlock_level=5)
-        ciko = Crop(name='Kraliyet Çikolatası', grow_time=0, seed_cost=0, harvest_value=50000, unlock_level=25)
+        # İşlenmiş ürünler (seed_cost=0 → tarlaya ekilemez, yalnızca fabrika
+        # çıktısı)
+        un = Crop(
+            name='Un',
+            grow_time=0,
+            seed_cost=0,
+            harvest_value=50,
+            unlock_level=1)
+        salca = Crop(
+            name='Salça',
+            grow_time=0,
+            seed_cost=0,
+            harvest_value=90,
+            unlock_level=2)
+        recel = Crop(
+            name='Çilek Reçeli',
+            grow_time=0,
+            seed_cost=0,
+            harvest_value=180,
+            unlock_level=5)
+        ciko = Crop(
+            name='Kraliyet Çikolatası',
+            grow_time=0,
+            seed_cost=0,
+            harvest_value=50000,
+            unlock_level=25)
         db.session.add_all([un, salca, recel, ciko])
         db.session.commit()
         kakao = Crop.query.filter_by(name='Altın Kakao').first()
-        r1 = Recipe(name='Un Üretimi', result_item_id=un.id, ingredient_item_id=bugday.id, req_amount=2, craft_time=30, unlock_level=1, required_machine_type='basic')
-        r2 = Recipe(name='Salça Üretimi', result_item_id=salca.id, ingredient_item_id=domates.id, req_amount=3, craft_time=45, unlock_level=2, required_machine_type='basic')
-        r3 = Recipe(name='Çilek Reçeli', result_item_id=recel.id, ingredient_item_id=cilek.id, req_amount=2, craft_time=60, unlock_level=5, required_machine_type='basic')
+        r1 = Recipe(
+            name='Un Üretimi',
+            result_item_id=un.id,
+            ingredient_item_id=bugday.id,
+            req_amount=2,
+            craft_time=30,
+            unlock_level=1,
+            required_machine_type='basic')
+        r2 = Recipe(
+            name='Salça Üretimi',
+            result_item_id=salca.id,
+            ingredient_item_id=domates.id,
+            req_amount=3,
+            craft_time=45,
+            unlock_level=2,
+            required_machine_type='basic')
+        r3 = Recipe(
+            name='Çilek Reçeli',
+            result_item_id=recel.id,
+            ingredient_item_id=cilek.id,
+            req_amount=2,
+            craft_time=60,
+            unlock_level=5,
+            required_machine_type='basic')
         db.session.add_all([r1, r2, r3])
         if kakao:
-            r4 = Recipe(name='Kraliyet Çikolatası Üretimi', result_item_id=ciko.id, ingredient_item_id=kakao.id, req_amount=3, craft_time=1800, unlock_level=25, required_machine_type='royal')
+            r4 = Recipe(
+                name='Kraliyet Çikolatası Üretimi',
+                result_item_id=ciko.id,
+                ingredient_item_id=kakao.id,
+                req_amount=3,
+                craft_time=1800,
+                unlock_level=25,
+                required_machine_type='royal')
             db.session.add(r4)
         db.session.commit()
 
@@ -111,22 +180,29 @@ def index():
     # Format: (x_coord, y_coord, width, height, is_owned)
     if len(current_user.plots) == 0:
         map_template = [
-            (0, 0, 2, 2, False), # Sol üst devasa orman (4 dönüm)
-            (2, 0, 3, 1, False), # Sağ üst uzun tarla (3 dönüm)
-            (0, 2, 1, 3, False), # Sol alt nehir/sera (3 dönüm)
+            (0, 0, 2, 2, False),  # Sol üst devasa orman (4 dönüm)
+            (2, 0, 3, 1, False),  # Sağ üst uzun tarla (3 dönüm)
+            (0, 2, 1, 3, False),  # Sol alt nehir/sera (3 dönüm)
             (1, 2, 1, 1, False),
             (2, 1, 3, 1, False),
             (2, 2, 1, 1, True),  # Merkez başlangıç (1 dönüm - ücretsiz)
             (3, 2, 1, 1, True),  # Merkez başlangıç (1 dönüm - ücretsiz)
             (2, 3, 1, 1, True),  # Merkez başlangıç (1 dönüm - ücretsiz)
             (3, 3, 1, 1, True),  # Merkez başlangıç (1 dönüm - ücretsiz)
-            (4, 2, 1, 2, False), # Sağ dikey tarla
+            (4, 2, 1, 2, False),  # Sağ dikey tarla
             (1, 3, 1, 2, False),
             (2, 4, 2, 1, False),
             (4, 4, 1, 1, False)
         ]
         for x, y, w, h, owned in map_template:
-            new_plot = Plot(user_id=current_user.id, state='empty', x_coord=x, y_coord=y, width=w, height=h, is_owned=owned)
+            new_plot = Plot(
+                user_id=current_user.id,
+                state='empty',
+                x_coord=x,
+                y_coord=y,
+                width=w,
+                height=h,
+                is_owned=owned)
             db.session.add(new_plot)
         db.session.commit()
 
@@ -139,7 +215,8 @@ def index():
 
     # --- SAYFA YÜKLENİRKEN DURUM GÜNCELLEME ---
     # Kullanıcı sayfayı kapattıktan sonra ekin büyümüş olabilir.
-    # Her yüklemede tüm 'planted' tarlalar kontrol edilip gerekirse 'ready' yapılır.
+    # Her yüklemede tüm 'planted' tarlalar kontrol edilip gerekirse 'ready'
+    # yapılır.
     plots = Plot.query.filter_by(user_id=current_user.id).all()
     needs_commit = False
     for plot in plots:
@@ -149,9 +226,14 @@ def index():
     if needs_commit:
         db.session.commit()
 
-    # seed_cost > 0 → Yalnızca tarlaya ekilebilir ürünler listelenir (fabrika çıktıları hariç)
+    # seed_cost > 0 → Yalnızca tarlaya ekilebilir ürünler listelenir (fabrika
+    # çıktıları hariç)
     crops = Crop.query.filter(Crop.seed_cost > 0).all()
-    return render_template('index.html', title='Dashboard', plots=plots, crops=crops)
+    return render_template(
+        'index.html',
+        title='Dashboard',
+        plots=plots,
+        crops=crops)
 
 
 # ==============================================================================
@@ -166,7 +248,12 @@ def factory():
     recipes = Recipe.query.all()
     # Kraliyet Atölyesi var mı? Şablonda özel bölüm göstermek için kullanılır.
     has_royal = any(m.machine_type == 'royal' for m in machines)
-    return render_template('factory.html', title='Tesisler', machines=machines, recipes=recipes, has_royal=has_royal)
+    return render_template(
+        'factory.html',
+        title='Tesisler',
+        machines=machines,
+        recipes=recipes,
+        has_royal=has_royal)
 
 
 # ==============================================================================
@@ -212,15 +299,18 @@ def plant(plot_id):
     total_cost = crop.seed_cost * area
 
     if current_user.coins < total_cost:
-        return jsonify({'error': f'Yetersiz bakiye! Bu geniş arazi ({area}x) için {total_cost} 🪙 gerekiyor.'}), 400
+        return jsonify(
+            {'error': f'Yetersiz bakiye! Bu geniş arazi ({area}x) için {total_cost} 🪙 gerekiyor.'}), 400
     if current_user.level < crop.unlock_level:
-        return jsonify({'error': f'Bu tohum için Seviye {crop.unlock_level} gerekiyor.'}), 400
+        return jsonify(
+            {'error': f'Bu tohum için Seviye {crop.unlock_level} gerekiyor.'}), 400
 
     # --- VERİTABANI YAZMA (UPDATE) ---
     current_user.coins -= total_cost
     plot.crop_id = crop.id
     plot.state = 'planted'
-    plot.planted_at = datetime.now(timezone.utc)  # UTC zaman damgası; büyüme hesaplaması için
+    # UTC zaman damgası; büyüme hesaplaması için
+    plot.planted_at = datetime.now(timezone.utc)
     db.session.commit()
 
     # JSON yanıtı: Frontend bu verilerle sayfayı yenilemeden haritayı günceller
@@ -257,7 +347,8 @@ def harvest(plot_id):
     if plot.user_id != current_user.id:
         return jsonify({'error': 'Unauthorized'}), 403
 
-    # Sunucu tarafında da durum kontrolü yapılır (AJAX çağrısı atlanmış olabilir)
+    # Sunucu tarafında da durum kontrolü yapılır (AJAX çağrısı atlanmış
+    # olabilir)
     plot.update_state()
     if plot.state != 'ready':
         return jsonify({'error': 'Bu tarla henüz hasada hazır değil.'}), 400
@@ -272,11 +363,15 @@ def harvest(plot_id):
     yield_amount = base_yield * area     # Toplam verim = taban × alan
 
     # Envanter güncelleme: Zaten varsa quantity artır, yoksa yeni kayıt oluştur
-    inventory_item = Inventory.query.filter_by(user_id=current_user.id, crop_id=crop.id).first()
+    inventory_item = Inventory.query.filter_by(
+        user_id=current_user.id, crop_id=crop.id).first()
     if inventory_item:
         inventory_item.quantity += yield_amount   # UPDATE
     else:
-        inventory_item = Inventory(user_id=current_user.id, crop_id=crop.id, quantity=yield_amount)
+        inventory_item = Inventory(
+            user_id=current_user.id,
+            crop_id=crop.id,
+            quantity=yield_amount)
         db.session.add(inventory_item)            # CREATE
 
     # Tarlayı sıfırla (boş duruma getir)
@@ -310,8 +405,12 @@ def harvest(plot_id):
 @login_required
 def market():
     """Kullanıcının satılabilir envanter kalemlerini listeler."""
-    inventory_items = [item for item in current_user.inventory if item.quantity > 0]
-    return render_template('market.html', title='Pazar', inventory=inventory_items)
+    inventory_items = [
+        item for item in current_user.inventory if item.quantity > 0]
+    return render_template(
+        'market.html',
+        title='Pazar',
+        inventory=inventory_items)
 
 
 @main_bp.route('/sell/<int:inventory_id>', methods=['POST'])
@@ -375,12 +474,19 @@ def craft(machine_id):
     if recipe.required_machine_type != machine.machine_type:
         return jsonify({'error': 'Bu tarif bu makinede üretilemez!'}), 400
     if current_user.level < recipe.unlock_level:
-        return jsonify({'error': f'Bu tarif için Seviye {recipe.unlock_level} gerekiyor.'}), 400
+        return jsonify(
+            {'error': f'Bu tarif için Seviye {recipe.unlock_level} gerekiyor.'}), 400
 
     # Envanterdeki ham madde kontrolü
-    inv_item = Inventory.query.filter_by(user_id=current_user.id, crop_id=recipe.ingredient_item_id).first()
+    inv_item = Inventory.query.filter_by(
+        user_id=current_user.id,
+        crop_id=recipe.ingredient_item_id).first()
     if not inv_item or inv_item.quantity < recipe.req_amount:
-        return jsonify({'error': f'Yetersiz malzeme! {recipe.req_amount}x {recipe.ingredient_item.name} gerekiyor.'}), 400
+        return jsonify(
+            {
+                'error': f'Yetersiz malzeme! {
+                    recipe.req_amount}x {
+                    recipe.ingredient_item.name} gerekiyor.'}), 400
 
     # Ham maddeyi düş, üretimi başlat
     inv_item.quantity -= recipe.req_amount
@@ -413,11 +519,16 @@ def collect(machine_id):
         return jsonify({'error': 'Üretim henüz tamamlanmadı.'}), 400
 
     recipe = machine.recipe
-    inv_item = Inventory.query.filter_by(user_id=current_user.id, crop_id=recipe.result_item_id).first()
+    inv_item = Inventory.query.filter_by(
+        user_id=current_user.id,
+        crop_id=recipe.result_item_id).first()
     if inv_item:
         inv_item.quantity += 1
     else:
-        inv_item = Inventory(user_id=current_user.id, crop_id=recipe.result_item_id, quantity=1)
+        inv_item = Inventory(
+            user_id=current_user.id,
+            crop_id=recipe.result_item_id,
+            quantity=1)
         db.session.add(inv_item)
 
     # Makineyi sıfırla
@@ -460,7 +571,9 @@ def build_factory():
     if current_user.coins < 10000:
         return jsonify({'error': 'Yetersiz bakiye! 10.000 🪙 gerekiyor.'}), 400
 
-    existing = Machine.query.filter_by(user_id=current_user.id, machine_type='royal').first()
+    existing = Machine.query.filter_by(
+        user_id=current_user.id,
+        machine_type='royal').first()
     if existing:
         return jsonify({'error': 'Bu tesis zaten inşa edilmiş!'}), 400
 
@@ -498,12 +611,15 @@ def buy_plot(plot_id):
     if plot.is_owned:
         return jsonify({'error': 'Bu arazi zaten sizin.'}), 400
 
-    owned_count = Plot.query.filter_by(user_id=current_user.id, is_owned=True).count()
+    owned_count = Plot.query.filter_by(
+        user_id=current_user.id,
+        is_owned=True).count()
     area = plot.width * plot.height
     cost = owned_count * 500 * area
 
     if current_user.coins < cost:
-        return jsonify({'error': f'Yetersiz bakiye! Bu devasa arazi için {cost} 🪙 gerekiyor.'}), 400
+        return jsonify(
+            {'error': f'Yetersiz bakiye! Bu devasa arazi için {cost} 🪙 gerekiyor.'}), 400
 
     current_user.coins -= cost
     plot.is_owned = True
@@ -527,8 +643,13 @@ def profile():
     İstatistikler (seviye, para, tarla sayısı) şablona aktarılır.
     """
     # Kullanıcıya ait sahiplenilmiş tarla sayısı
-    plot_count = Plot.query.filter_by(user_id=current_user.id, is_owned=True).count()
-    return render_template('profile.html', title='Profil', plot_count=plot_count)
+    plot_count = Plot.query.filter_by(
+        user_id=current_user.id,
+        is_owned=True).count()
+    return render_template(
+        'profile.html',
+        title='Profil',
+        plot_count=plot_count)
 
 
 # ==============================================================================
@@ -562,9 +683,11 @@ def upload_avatar():
         return jsonify({'error': 'Dosya seçilmedi.'}), 400
 
     # Uzantı kontrolü
-    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    ext = file.filename.rsplit(
+        '.', 1)[-1].lower() if '.' in file.filename else ''
     if ext not in ALLOWED_EXTENSIONS:
-        return jsonify({'error': f'Desteklenmeyen format. İzin verilenler: {", ".join(ALLOWED_EXTENSIONS)}'}), 400
+        return jsonify(
+            {'error': f'Desteklenmeyen format. İzin verilenler: {", ".join(ALLOWED_EXTENSIONS)}'}), 400
 
     # Güvenli, benzersiz dosya adı oluştur
     filename = secure_filename(f'user_{current_user.id}_avatar.{ext}')
@@ -581,7 +704,8 @@ def upload_avatar():
     current_user.avatar_file = filename
     db.session.commit()
 
-    # Frontend'e yeni avatar URL'ini döndür (sayfayı yenilemeden güncellemek için)
+    # Frontend'e yeni avatar URL'ini döndür (sayfayı yenilemeden güncellemek
+    # için)
     new_avatar_url = f'/static/uploads/avatars/{filename}'
     return jsonify({
         'success': True,

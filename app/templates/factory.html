@@ -87,17 +87,16 @@
         <div class="crop-list">
             {% for recipe in recipes %}
             <div class="crop-item recipe-item {% if current_user.level < recipe.unlock_level %}locked{% endif %}"
-                data-req-machine="{{ recipe.required_machine_type }}" {% if current_user.level < recipe.unlock_level
-                %}style="opacity: 0.6;" {% endif %}>
+                data-req-machine="{{ recipe.required_machine_type }}" 
+                {% if current_user.level < recipe.unlock_level %}style="opacity: 0.6;"{% endif %}>
                 <div class="crop-info">
-                    <h4>{{ recipe.name }} {% if current_user.level < recipe.unlock_level %}🔒 (Lvl {{
-                            recipe.unlock_level }}){% endif %}</h4>
-                            <p>Gereken: {{ recipe.req_amount }}x {{ recipe.ingredient_item.name }} | Süre: {{
-                                recipe.craft_time }}sn</p>
+                    <h4>{{ recipe.name }} {% if current_user.level < recipe.unlock_level %}🔒 (Lvl {{ recipe.unlock_level }}){% endif %}</h4>
+                    <p>Gereken: {{ recipe.req_amount }}x {{ recipe.ingredient_item.name }} | Süre: {{ recipe.craft_time }}sn</p>
                 </div>
-                <button class="btn-plant" {% if current_user.level < recipe.unlock_level %}disabled
-                    style="background:gray; cursor:not-allowed;" {% else %}onclick="startCrafting({{ recipe.id }})" {%
-                    endif %}>
+                <button class="btn-plant" 
+                    {% if current_user.level < recipe.unlock_level %}disabled style="background:gray; cursor:not-allowed;" 
+                    {% else %}onclick="startCrafting({{ recipe.id }})" 
+                    {% endif %}>
                     {% if current_user.level < recipe.unlock_level %}Kilitli{% else %}Üret{% endif %} </button>
             </div>
             {% endfor %}

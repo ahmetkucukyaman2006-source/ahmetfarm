@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - DEBUG=False
+      - SECRET_KEY=ahmetfarm_gizli_anahtar_123!
+      - DATABASE_URL=postgresql://ahmet_user:farm_password_99@db:5432/ahmetfarm_db
+      - MAIL_SERVER=smtp.gmail.com
+      - MAIL_PORT=587
+      - MAIL_USE_TLS=True
+      - MAIL_USERNAME=seninmailadresin@gmail.com
+      - MAIL_PASSWORD=bylhiwhriokxtjok
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=ahmet_user
+      - POSTGRES_PASSWORD=farm_password_99
+      - POSTGRES_DB=ahmetfarm_db
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:

@@ -6,3 +6,4 @@ flask-wtf
 flask-babel
 flask-mail
 python-dotenv
+psycopg2-binary
