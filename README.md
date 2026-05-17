@@ -1,3 +1,6 @@
+## 🎥 Demo Videosu
+Projenin tüm teknik altyapısını, asenkron oyun döngüsünü, çoklu dil desteğini ve canlı şifre sıfırlama akışını içeren 4 dakikalık detaylı oynanış ve tanıtım videosuna **[Buraya Tıklayarak (Google Drive)](https://drive.google.com/file/d/1e9wHOLd6KWU9SwlWtRW-z_6zQEnDo4Qn/view?usp=sharing)** ulaşabilirsiniz.
+
 # 🌾 AhmetFarm - Söke Ovası Çiftlik Simülasyonu
 
 AhmetFarm, Flask web çatısı kullanılarak geliştirilmiş, oyuncuların Aydın Söke Ovası'nda kendi tarlalarını ekip biçebildiği, ürünlerini depolayıp pazarda satabildiği ve seviye atlayarak yeni tesisler kurabildiği interaktif bir web tabanlı çiftlik simülasyonudur.
